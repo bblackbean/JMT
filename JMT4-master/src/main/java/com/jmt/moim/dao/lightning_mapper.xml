@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jmt.moim.dao.LightningDAO">
+	
+	<select id="foodList" resultType="light">
+		SELECT * FROM food
+	</select>
+	
+	<!-- 
+	
+	<select id="list" resultType="com.jmt.moim.dto.LightningDTO">
+		SELECT
+			lightning_no
+			,leader_id
+			,lightning_title
+			,lightning_date
+			,member_num
+			,(select count(apply_no)+1 from apply a  where status="승인" and class_no = 1 and a.idx=l.lightning_no) as member_count
+			,lightning_status
+			,r.restaurant_name
+			,food_name
+		FROM lightninglist l JOIN restaurant r USING(restaurant_no)  
+		LEFT OUTER JOIN food f ON r.food_no = f.food_no
+	</select>
+	<include refid="selectedListSql"></include>
+	 -->
+	
+	
+	<select id="selectedList" resultType="light" 
+	parameterType="hashmap">
+		SELECT
+			lightning_no
+			,leader_id
+			,lightning_title
+			,lightning_date
+			,member_num
+			,(select count(apply_no)+1 from apply a  where status="승인" and class_no = 1 and a.idx=l.lightning_no) as member_count
+			,(select status from apply a  where  class_no = 1 and a.idx=l.lightning_no and member_id=#{loginId}) as participate
+			,lightning_status
+			,r.restaurant_name
+			,food_name
+		FROM lightninglist l JOIN restaurant r USING(restaurant_no)  
+		LEFT OUTER JOIN food f ON r.food_no = f.food_no
+		
+		WHERE lightning_status IN ("모집중","모집마감")
+		
+			<include refid="selectedListSql"></include>
+			
+		ORDER BY lightning_status DESC, lightning_date ASC limit 10 offset #{offset}
+	</select>
+	
+	<sql id="selectedListSql">
+			<if test = "!lightning_title.equals('')">
+				and lightning_title LIKE CONCAT('%',#{lightning_title}, '%') 
+			</if>
+		
+			<if test = "!food_no.equals('')">
+				and f.food_no = #{food_no} 
+			</if>
+		
+			<if test = "!eat_speed.equals('')">
+				and eat_speed = #{eat_speed}  
+			</if>
+			
+			<if test = "!job.equals('')">
+				and job = #{job} 
+			</if>
+			
+			<if test = "gender!=null">
+				and gender = #{gender}
+			</if>
+	</sql>
+	
+	<select id="allCount" resultType="int" parameterType="hashmap">
+		SELECT count(lightning_no) FROM lightninglist join food f using(food_no) WHERE lightning_status IN ("모집중","모집마감")
+		<include refid="selectedListSql"></include>
+	</select>
+	
+	
+	<update id="changeStatus">
+		UPDATE lightninglist SET lightning_status="모집마감" WHERE <![CDATA[lightning_date < curdate()]]> 
+	</update>
+	
+	<select id="detail" resultType="light">
+		SELECT 
+			lightning_no
+			,lightning_title
+			,leader_id
+			,member_num
+			,(select count(apply_no)+1 from apply a where status="승인" and class_no = 1 and a.idx = #{param1}) as member_count
+			,(select status from apply a where  class_no = 1 and idx= #{param1} and member_id=#{param2}) as status
+			,(select profile_gender FROM profile p WHERE member_id = #{param2}) as profile_gender
+			,eat_speed
+			,lightning_create
+			,lightning_date
+			,restaurant_name
+			,f.food_name
+			,gender
+			,job
+			,lightning_content
+		FROM lightninglist l JOIN restaurant r USING(restaurant_no) LEFT OUTER JOIN food f ON f.food_no = r.food_no 
+			WHERE lightning_no = #{param1}
+	</select>
+	
+	<insert id="register">
+		INSERT INTO apply(member_id, class_no, idx) 
+			VALUES(#{param1},1,#{param2})
+	</insert>
+	
+	<update id="dropout">
+		UPDATE apply SET status="탈퇴" WHERE class_no = 1 AND member_id = #{param1} AND idx = #{param2}
+	</update>
+	
+	<select id="profile" resultType="light" parameterType="String">
+		SELECT eat_speed, profile_gender, profile_job FROM profile p WHERE member_id = #{loginId}
+	</select>
+	
+	<insert id="report" parameterType="hashmap">
+		INSERT INTO report(reporter,reported,class_no,report_reason,idx)
+			VALUES(
+				#{loginId}
+				,(select leader_id from lightninglist where lightning_no = #{lightning_no})
+				,1,
+				<if test="!report_reason.equals('기타')">#{report_reason}</if>
+				<if test="report_reason.equals('기타')">#{report_reason_text}</if>
+				,#{lightning_no})
+	</insert>
+	
+	
+	<insert id="cmtReport" parameterType="hashmap">
+		INSERT INTO report(reporter,reported,class_no,report_reason,idx)
+			VALUES(
+				#{loginId}
+				,(select member_id from comment where comment_no = #{comment_no})
+				,2,
+				<if test="!report_reason.equals('기타')">#{report_reason}</if>
+				<if test="report_reason.equals('기타')">#{report_reason_text}</if>
+				,#{comment_no})
+	</insert>
+	
+	
+	
+	<update id="delete" parameterType="String">
+		UPDATE lightninglist SET lightning_status = "삭제" WHERE lightning_no = #{lightning_no}
+	</update>
+	
+	<update id="cmtDel" parameterType="String">
+		UPDATE comment SET comment_status = "삭제" 
+			WHERE comment_no IN (SELECT comment_no FROM comment WHERE class_no =2 AND idx=#{lightning_no} AND comment_status ="공개")
+	</update>
+	
+	<select id="profileChk" resultType="int" parameterType="String">
+		SELECT COUNT(profile_no) FROM profile WHERE member_id = #{loginId}
+	</select>
+	
+	<select id="resList" resultType="light">
+		SELECT restaurant_no, restaurant_name, restaurant_address, food_no, food_name FROM restaurant NATURAL JOIN food
+		
+		<if test="restaurant_name != null and !restaurant_name.equals('')">
+			WHERE restaurant_name LIKE CONCAT('%',#{restaurant_name}, '%') 
+		</if>
+	</select>
+	
+	
+	<insert id="lightCreate" parameterType="hashmap">
+		INSERT INTO lightninglist(
+			lightning_title
+			,restaurant_no
+			,lightning_date
+			,food_no
+			,member_num
+			,eat_speed
+			,gender
+			,job
+			,lightning_content
+			,leader_id)
+		VALUES(
+			#{lightning_title}
+			,#{restaurant_no}
+			,#{lightning_date}
+			,#{food_no}
+			,#{member_num}
+			,#{eat_speed}
+			,#{gender}
+			,#{job}
+			,#{lightning_content}
+			,#{loginId}
+		)	
+	</insert>
+
+
+	<insert id="Delnoti" >
+		INSERT INTO noti(class_no,noti_content,idx,info,member_id)
+		SELECT 1
+				,"모임글이 삭제 됐습니다."
+				,#{param1}
+				,(select lightning_title from lightninglist where lightning_no = #{param1})
+				, member_id
+		FROM apply WHERE status IN("승인","대기") AND class_no = 1 AND idx=#{param1}
+	</insert>
+</mapper>

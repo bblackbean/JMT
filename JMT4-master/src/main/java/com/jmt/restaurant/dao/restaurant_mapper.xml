@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jmt.restaurant.dao.RestaurantDAO">
+
+	<select id="foodname" resultType="res">
+		SELECT food_no, food_name FROM food
+	</select>
+	
+	<!-- <select id="resList" parameterType="hashmap" resultType="res">
+		select
+			*
+		from (
+			SELECT
+				  r.restaurant_no
+				, f.food_name
+				, r.restaurant_name
+				, r.restaurant_address
+				, r.restaurant_X 
+				, r.restaurant_Y
+			from
+				restaurant r
+			join
+				food f on
+			r.food_no = f.food_no
+		) as r
+		left join (
+			select
+				  photo_no
+				, photo_newFileName
+				, idx
+			from
+				photo
+			where
+				class_no = 8
+		) as p on
+		r.restaurant_no = p.idx
+		group by
+			restaurant_no
+		<where>
+			<if test="search != null and search != ''">
+				AND r.restaurant_name LIKE CONCAT('%', #{search}, '%')
+			</if>
+	        <if test="foodname != null and foodname != ''">
+	        	AND  r.food_no = #{foodname}
+        	</if>
+		</where>
+		ORDER BY r.restaurant_no DESC limit #{cnt} OFFSET #{offset};
+	</select>
+	 -->
+	
+	<select id="resList" parameterType="hashmap" resultType="res">
+		select * from restaurant r left outer join comment c on r.restaurant_no = c.idx  
+		left outer join photo p on p.idx = c.comment_no join food f on r.food_no = f.food_no WHERE restaurant_info = "영업중"
+			<if test="search != null and search != ''">
+				AND r.restaurant_name LIKE CONCAT('%', #{search}, '%')
+			</if>
+	        <if test="foodname != null and foodname != ''">
+	        	AND  r.food_no = #{foodname}
+        	</if>
+		group by restaurant_no
+		ORDER BY r.restaurant_no DESC limit #{cnt} OFFSET #{offset};
+	</select>
+	
+	<!-- 음식점 검색 페이징 -->
+	<select id="allCount" parameterType="hashmap" resultType="int">
+		SELECT
+			COUNT(restaurant_no)
+		FROM restaurant r WHERE restaurant_info = "영업중"
+			<if test="search != null and search != ''">
+				AND r.restaurant_name LIKE CONCAT('%', #{search}, '%')
+			</if>
+			<if test="foodname != null and foodname != ''">
+	        	AND  r.food_no = #{foodname}
+        	</if>
+	</select>
+	
+		
+	
+	<select id="resDetail" resultType="res" parameterType="int" >
+		SELECT 
+			r.restaurant_no
+			, f.food_name
+			, r.restaurant_name
+			, r.restaurant_address
+			, r.restaurant_call
+			, r.restaurant_X 
+			, r.restaurant_Y
+		 FROM restaurant r
+		 JOIN food f ON r.food_no = f.food_no
+		 WHERE restaurant_no = #{restaurant_no}
+	</select>
+	
+	<select id="lightninglist" resultType="res" parameterType="int" >
+		select
+			  l.lightning_title 
+			, l.lightning_status
+			, lightning_no
+		from 
+			lightninglist l
+		inner join restaurant r on 
+			l.restaurant_no = r.restaurant_no
+		where
+			l.restaurant_no = #{restaurant_no}
+	</select>
+	
+	<insert id="reviewWrite" 
+	useGeneratedKeys="true"
+	keyColumn="comment_no"
+	keyProperty="comment_no"
+	parameterType="res">
+		INSERT INTO comment(class_no,member_id,comment_content,comment_date,comment_status,idx)
+			VALUES(8, #{member_id}, #{comment_content}, CURDATE(), '공개', #{idx})
+	</insert>
+	
+	<insert id="reviewFileWrite">
+		INSERT INTO photo(photo_oriFileName, photo_newFileName, idx, class_no)
+			VALUES(#{param1},#{param2},#{param3},#{param4})
+	</insert>
+	
+	
+	<insert id="restaurantWrite">
+		INSERT INTO restaurantupdate(restaurantUpdate_reason, restaurant_no, member_id)
+			VALUES(#{restaurantUpdate_reason},#{restaurant_no},#{member_id})
+	</insert>
+	
+	<select id="photoList" resultType="res" parameterType="hashmap" >
+		select
+			c.idx
+			, p.photo_newFileName
+			, c.comment_date 
+		from 
+			comment c 
+		inner join photo p on 
+			c.class_no = p.class_no
+		where
+			c.idx = #{restaurant_no};
+	</select>
+	
+	<select id="photoDelList" resultType="res" parameterType="hashmap" >
+		select * from photo p where photo_no = #{photo_no}
+	</select>
+		
+	
+	<!-- <select id="resCommet" resultType="res" parameterType="hashmap" >	
+		select
+			c.comment_no 
+			, c.comment_content 
+			, c.comment_date 
+			, c.comment_no 
+			, p.photo_newFileName 
+			, c.idx 
+			, c.class_no 
+			, c.member_id 
+			, c.comment_status 
+			,(select count(like_no) from likes l where c.comment_no = l.comment_no) as likeNo
+		from comment c
+		join photo p
+		where c.idx = #{restaurant_no}
+		and c.class_no = 8
+	</select> -->
+	
+	<select id="resCommet" resultType="res">	
+		select c.comment_no
+				, c.comment_content 
+				, c.comment_date 
+				, c.comment_status 
+				, c.member_id
+				, (select count(like_no) from likes l where c.comment_no = l.comment_no) as likeNo
+				, (select l.member_id from likes l where c.comment_no = l.comment_no and l.member_id = #{param1}) as likeMember
+			from comment c
+			where idx = #{param2}
+	</select>
+	
+	<select id="CommentPhoto" resultType="hashmap" parameterType="int">
+		select * from photo p left outer join comment c on p.idx = c.comment_no  where c.comment_status in ('공개','해제') AND p.idx = #{comment_no}
+	</select>
+	
+	<select id="CommentLike" resultType="hashmap" parameterType="int">
+		select * from likes l where comment_no = #{comment_no}
+	</select>
+	
+	<update id="commentDel" parameterType="hashmap">
+		UPDATE comment SET comment_status = "삭제" WHERE comment_no = #{comment_no}		
+	</update>
+	
+	<select id="reviewUpdate" resultType="res" parameterType="hashmap" >	
+		select c2.comment_no , c2.comment_content, c2.idx from comment c2 where comment_no = #{comment_no}
+	</select>
+	
+	<select id="reviewPhoto" resultType="res" parameterType="hashmap" >	
+		select photo_no, photo_newFileName, idx from photo p where idx = #{comment_no}
+	</select>
+	
+	<delete id="reviewDel">
+		DELETE FROM photo WHERE photo_no = #{photo_no}
+	</delete>
+	
+	<!--  
+	<delete id="commentPhotoDel">
+		DELETE FROM photo WHERE idx = #{comment_no}
+	</delete>
+	-->
+	
+	<update id="reviewReLoad" parameterType="Hashmap">
+		UPDATE comment SET
+			comment_content = #{comment_content}
+		WHERE comment_no = #{idx}
+				
+	</update>
+	
+	<insert id="like">
+		insert into likes (member_id, comment_no, like_count)
+		values(#{loginId}, #{comment_no}, +1)
+	</insert>
+	
+	<select id="findLike" resultType="res" parameterType="hashmap">
+		select distinct (select count(like_no) from likes l where c.comment_no = l.comment_no) from likes l, comment c where c.comment_no = l.comment_no and idx = 319;
+	</select>
+	
+	<delete id="likeDel">
+		DELETE FROM likes WHERE comment_no = #{comment_no} AND member_id = #{loginId}
+	</delete>
+	
+	<select id="resUpdateList" resultType="res" parameterType="hashmap">
+		select
+			r2.restaurant_name 
+			, r.restuarantUpdate_no 
+			, r.restaurantUpdate_reason 
+			, r.restaurant_no 
+			, r.member_id 
+			, r.restaurantUpdate_date 
+			, r.restaurantUpdate_date 
+			, r.restaurantUpdate_proc_status 
+		from restaurantupdate r 
+		inner join restaurant r2 on
+		r.restaurant_no = r2.restaurant_no
+		<where>
+			<if test="list_option !=null">
+				<if test="list_option.equals('처리대기')">
+					restaurantUpdate_proc_status = '처리대기'
+				</if>
+				<if test="list_option.equals('처리완료')">
+					restaurantUpdate_proc_status = '처리완료'
+				</if>
+			</if>
+		</where>
+		ORDER BY r.restuarantUpdate_no DESC limit #{cnt} offset #{offset}
+	</select>
+	
+	
+	<!-- 맛집수정요청 페이징 -->
+	<select id="allCount2" parameterType="hashmap" resultType="int">
+		select
+			count(restuarantUpdate_no)
+	 	from restaurantupdate r
+	 	<where>
+			<if test="list_option !=null">
+				<if test="list_option.equals('처리대기')">
+					restaurantUpdate_proc_status ='처리대기'
+				</if>
+				<if test="list_option.equals('처리완료')">
+					restaurantUpdate_proc_status ='처리완료'
+				</if>
+			</if>
+		</where>
+	</select>
+	
+	<!-- 맛집 수정요청 음식점 -->
+	<select id="requestNO" parameterType="int" resultType="res">
+		SELECT 
+			r.restaurant_no
+			, f.food_name
+			, r.restaurant_name
+			, r.restaurant_address
+			, r.restaurant_X 
+			, r.restaurant_Y
+			, r.restaurant_info 
+			, r.restaurant_call 
+		FROM restaurant r
+		JOIN food f ON r.food_no = f.food_no
+		where restaurant_no = #{restaurant_no}
+	</select>
+	
+	<!-- 맛집 수정요청 번호 -->
+	<select id="restuarantUpdateNo" resultType="res" parameterType="int">
+		select
+			r2.restaurant_name 
+			, r.restuarantUpdate_no 
+			, r.restaurantUpdate_reason 
+			, r.restaurant_no 
+			, r.member_id 
+			, r.restaurantUpdate_date 
+			, r.restaurantUpdate_proc_status 
+		from restaurantupdate r 
+		inner join restaurant r2 on
+		r.restaurant_no = r2.restaurant_no 
+		where restuarantUpdate_no = #{restuarantUpdate_no}
+	</select>
+	
+	<update id="resAdminUpdate" parameterType="Hashmap">
+		update restaurant set
+			restaurant_name = #{restaurant_name}
+			, restaurant_address = #{restaurant_address}
+			, restaurant_info = #{restaurant_info}
+			, restaurant_call = #{restaurant_call}
+		where restaurant_no = #{restaurant_no}		
+	</update>
+	
+	<update id="Reporthandling" parameterType="Hashmap">
+		update restaurantupdate set
+			restaurantUpdate_proc_status = #{restaurantUpdate_proc_status}
+		where restuarantUpdate_no = #{restuarantUpdate_no}
+	</update>
+	
+	<select id="commentList" resultType="res" parameterType="int">
+		select * from comment c where comment_no = #{comment_no}
+	</select>
+	
+	<select id="memberPhoto" resultType="res" parameterType="Hashmap">
+		select
+			  p.profile_no
+			, p.member_id
+			, p2.idx
+			, p2.photo_newFileName
+		from
+			profile p
+		join
+			photo p2
+		where
+			p.profile_no = p2.idx
+		and
+			class_no = 9
+	</select>
+	
+	<insert id="resCmtReport" parameterType="hashmap">
+		INSERT INTO report(reporter,reported,class_no,report_reason,idx)
+			VALUES(
+				#{loginId}
+				,(select member_id from comment where comment_no = #{comment_no})
+				,8,
+				<if test="!report_reason.equals('기타')">#{report_reason}</if>
+				<if test="report_reason.equals('기타')">#{report_reason_text}</if>
+				,#{comment_no})
+	</insert>
+	
+	
+
+</mapper>

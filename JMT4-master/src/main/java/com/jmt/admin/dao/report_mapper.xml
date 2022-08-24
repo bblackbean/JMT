@@ -1,0 +1,473 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jmt.admin.dao.ReportDAO">
+	
+	
+	
+	<select id="reportList" parameterType="hashmap" resultType="com.jmt.admin.dto.ReportDTO">
+		SELECT c.class_name ,c.class_no,r.reporter ,r.reported ,r.report_date ,r.report_proc_status ,r.report_proc_date ,r.idx ,r.class_no,r.report_reason,r.report_no   
+		,(select l.lightning_title from lightninglist l  where l.lightning_no =r.idx and r.class_no =l.class_no  )as mb_ligntning_title 
+		,(select c.comment_content  from comment c  where c.comment_no  =r.idx  and r.class_no =c.class_no  )as mb_comment
+		,(select d.dojang_title  from  dojanglist d  where d.dojang_no  =r.idx and r.class_no  =d.class_no   )as mb_dojang_title
+		,(select d2.dojangPost_subject  from  dojangpost d2  where d2.dojangPost_no  =r.idx and r.class_no = d2.class_no  )as mb_dojang_post
+		,(select g.review_title  from groupreview g where g.groupReview_no = r.idx and r.class_no = g.class_no  )as mb_group_review
+		FROM report r JOIN codetable c on c.class_no = r.class_no 
+	
+		<where>
+			
+			<if test = "report_status != '' and report_status != null">
+				<if test='report_status.equals("wait")'>
+					AND r.report_proc_status = '처리대기'
+				</if>
+				<if test="report_status.equals('blind')">
+					AND r.report_proc_status = '블라인드'
+				</if>
+				<if test="report_status.equals('end')">
+					AND r.report_proc_status = '처리완료'
+				</if>
+			</if>
+			
+			<if test="report_sort !='' and report_sort!= null and keyword !=''  and keyword !=null ">
+				<!-- <if test ="report_sort.equals('allList')">
+					
+				</if> -->
+				<if test ="report_sort.equals('idx')">
+					AND r.idx  LIKE concat('%',#{keyword},'%') 
+				</if>
+				<if test ="report_sort.equals('sort')">
+					AND c.class_name  LIKE concat('%',#{keyword},'%') 
+				</if>
+				<if test ="report_sort.equals('reporter')">
+					AND r.reporter LIKE concat('%',#{keyword},'%') 
+				</if>
+			</if>
+			
+			
+		</where>
+				<!-- <if test ="report_sort !='' and report_sort!= null  ">
+					<if test="report_sort.equals('title')">
+					having 1=1
+					or mb_ligntning_title LIKE concat('%',#{keyword},'%') 
+					or mb_comment LIKE concat('%',#{keyword},'%') 
+					or mb_dojang_title LIKE concat('%',#{keyword},'%') 
+					or mb_dojang_post LIKE concat('%',#{keyword},'%') 
+					or mb_group_review LIKE concat('%',#{keyword},'%') 
+					</if>
+				</if> -->
+	ORDER BY r.report_date DESC limit #{cnt} offset #{offset}
+	</select>
+	
+	
+	
+	<select id="allCount" parameterType="hashmap" resultType="Integer">
+		select count (dd.report_no) from	(select r.report_no ,r.report_proc_status  ,c.class_name,r.reporter,r.idx
+		,(select l.lightning_title from lightninglist l  where l.lightning_no =r.idx and r.class_no =l.class_no  )as mb_ligntning_title 
+		,(select c.comment_content  from comment c  where c.comment_no  =r.idx  and r.class_no =c.class_no  )as mb_comment
+		,(select d.dojang_title  from  dojanglist d  where d.dojang_no  =r.idx and r.class_no  =d.class_no   )as mb_dojang_title
+		,(select d2.dojangPost_subject  from  dojangpost d2  where d2.dojangPost_no  =r.idx and r.class_no = d2.class_no  )as mb_dojang_post
+		,(select g.review_title  from groupreview g where g.groupReview_no = r.idx and r.class_no = g.class_no  )as mb_group_review
+		FROM report r JOIN codetable c on c.class_no = r.class_no) as dd
+		<where>
+			
+			<if test = "report_status != '' and report_status != null">
+				<if test='report_status.equals("wait")'>
+					AND dd.report_proc_status = '처리대기'
+				</if>
+				<if test="report_status.equals('blind')">
+					AND dd.report_proc_status = "블라인드"
+				</if>
+				<if test="report_status.equals('end')">
+					AND dd.report_proc_status = '처리완료'
+				</if>
+			</if>
+			
+			<if test="report_sort !='' and report_sort!= null and keyword !=''  and keyword !=null ">
+				<if test ="report_sort.equals('idx')">
+					AND dd.idx  LIKE concat('%',#{keyword},'%') 
+				</if>
+				<if test ="report_sort.equals('sort')">
+					AND dd.class_name  LIKE concat('%',#{keyword},'%') 
+				</if>
+				<if test ="report_sort.equals('reporter')">
+					AND dd.reporter LIKE concat('%',#{keyword},'%') 
+				</if>
+				<!-- <if test ="report_sort.equals('title')">
+					AND dd.mb_ligntning_title LIKE concat('%',#{keyword},'%')  
+					AND dd.mb_comment LIKE concat('%',#{keyword},'%')  
+					AND dd.mb_dojang_title LIKE concat('%',#{keyword},'%')  
+					AND dd.mb_dojang_post LIKE concat('%',#{keyword},'%')  
+					AND dd.mb_group_review LIKE concat('%',#{keyword},'%')  
+				</if> -->
+			</if>
+			
+		</where>
+	
+	</select>
+	
+
+	
+	
+	<!-- 신고 상세보기 -->
+	<select id="reportDetail" parameterType="int" resultType="com.jmt.admin.dto.ReportDTO">
+		select c.class_name,r.result_reason, r.report_no , r.report_date ,r.report_reason ,r.report_proc_status ,r.report_proc_date ,r.reported ,r.reporter  ,r.idx ,r.class_no from report r 
+		JOIN codetable c on r.class_no =c.class_no 
+		where r.report_no =#{param1}
+	</select> 
+	
+	<!-- 신고 상세 수정하기   , insert로 바꾸기   수정중 수정중 수정중 수정중 수정중.....
+	<update id="reportUpdate" parameterType="hashmap">
+		UPDATE report r SET r.result_reason =#{reason} , r.report_proc_status=#{report_status},r.report_proc_date = now() WHERE r.report_no = #{report_no}
+	</update>
+	 -->
+	<!-- 신고 상세 수정하기   , insert로 바꾸기 -->
+	<update id="reportUpdate1" parameterType="hashmap">
+		UPDATE report r inner join  lightninglist l on r.idx = l.lightning_no  
+ 		SET r.result_reason =#{reason} , r.report_proc_status=#{report_status}, l.lightning_status  =#{report_status}, r.report_proc_date = now() WHERE r.report_no =#{report_no}
+	</update>
+	<!-- 신고 상세 수정하기   , insert로 바꾸기 -->
+	<update id="reportUpdate2" parameterType="hashmap">
+		UPDATE report r inner join  comment c on r.idx = c.comment_no  and r.class_no =c.class_no  
+		 SET r.result_reason =#{reason} , r.report_proc_status=#{report_status}, c.comment_status =#{report_status}, r.report_proc_date = now() WHERE r.report_no  =#{report_no}
+	</update>
+	<!-- 신고 상세 수정하기   , insert로 바꾸기 -->
+	<update id="reportUpdate3" parameterType="hashmap">
+		UPDATE report r inner join  dojanglist d on r.idx = d.dojang_no  and r.class_no =d.class_no 
+ 		SET r.result_reason =#{reason} , r.report_proc_status=#{report_status},d.dojang_status   =#{report_status}, r.report_proc_date = now() WHERE r.report_no  =#{report_no}
+	</update>
+	<!-- 신고 상세 수정하기   , insert로 바꾸기 -->
+	<update id="reportUpdate4" parameterType="hashmap">
+		UPDATE report r inner join  dojangpost d on r.idx = d.dojangPost_no  and r.class_no = d.class_no 
+ 		SET r.result_reason =#{reason} , r.report_proc_status=#{report_status}, d.dojangPost_status  =#{report_status}, r.report_proc_date = now() WHERE r.report_no  =#{report_no}
+	</update>
+	<!-- 신고 상세 수정하기   , insert로 바꾸기 -->
+	<update id="reportUpdate6" parameterType="hashmap">
+		UPDATE report r inner join  groupreview g on r.idx = g.groupReview_no 
+ 		SET r.result_reason =#{reason} , r.report_proc_status=#{report_status}, g.groupReview_status  =#{report_status}, r.report_proc_date = now() WHERE r.report_no =#{report_no}
+	</update>
+	
+	
+	
+	
+	<!-- 신고 게시물 카테고리별로 처리.  -->
+	<select id="select_no1" parameterType="integer" resultType="com.jmt.admin.dto.ReportPostDto">
+		SELECT l.lightning_title, l.lightning_content , l.lightning_status FROM  lightninglist l WHERE lightning_no  =#{idx} 
+	</select>
+	
+	<select id="select_no2" parameterType="integer" resultType="com.jmt.admin.dto.ReportPostDto">
+		SELECT  c.comment_content  , c.comment_status,c.idx  FROM   comment c WHERE c.comment_no  =#{idx} 
+	</select>
+	
+	<select id="select_no3" parameterType="integer" resultType="com.jmt.admin.dto.ReportPostDto">
+		SELECT d.dojang_title,d.dojang_content ,d.dojang_status FROM dojanglist d WHERE dojang_no =#{idx}
+	</select>
+	
+	<select id="select_no4" parameterType="integer" resultType="com.jmt.admin.dto.ReportPostDto">
+		SELECT d.dojangPost_subject ,d.dojangPost_content ,d.dojangPost_status  FROM dojangpost d  WHERE dojangPost_no =#{idx}
+	</select>
+	<select id="select_no6" parameterType="integer" resultType="com.jmt.admin.dto.ReportPostDto">
+		SELECT g.review_title, g.review_content ,g.groupReview_status FROM groupreview g WHERE g.groupReview_no =#{idx}
+	</select>
+	
+	<update id="blind" parameterType="String">
+		UPDATE report SET report_proc_status ='블라인드', report_proc_date = now() WHERE report_no =#{idx}
+	</update>
+	
+	
+	
+	
+	
+	<select id="updateCheck" parameterType="int" resultType="String">
+		SELECT report_proc_status  from report WHERE report_no=#{report_no}
+	</select>
+	<!-- 블라인드 insert -->
+	<insert id="insertBlind" parameterType="map" >
+		INSERT INTO blind (member_id, report_no, admin_id, blind_reason, blind_status) VALUES(#{reported}, #{report_no}, #{loginId}, #{reason}, #{report_status})
+	</insert>
+	<select id="blindCount" parameterType="map" resultType="int">
+		select count(dd.blind_no) from 
+		(select b.blind_no
+		 ,(select l.lightning_title from lightninglist l  where l.lightning_no =r.idx and r.class_no =l.class_no  )as mb_ligntning_title 
+		,(select c.comment_content  from comment c  where c.comment_no  =r.idx  and r.class_no =c.class_no  )as mb_comment
+		,(select d.dojang_title  from  dojanglist d  where d.dojang_no  =r.idx and r.class_no  =d.class_no   )as mb_dojang_title
+		,(select d2.dojangPost_subject  from  dojangpost d2  where d2.dojangPost_no  =r.idx and r.class_no = d2.class_no  )as mb_dojang_post
+		,(select g.review_title  from groupreview g where g.groupReview_no = r.idx and r.class_no = g.class_no  )as mb_groupreview
+	
+		 from blind b  left outer join report r ON r.report_no = b.report_no 
+		
+		
+		<where>
+			<if test="status_option!= null ">
+				<if test="status_option.equals('blind')">
+			 		 r.report_proc_status  ='블라인드' 
+			 	</if>
+			 	<if test="status_option.equals('end')">
+			 		 r.report_proc_status  ='공개' 
+			 	</if>
+			</if>	
+			
+			<if test="search_option != null ">
+	  			<if test="search_option.equals('reporterID')">
+					AND r.reporter LIKE concat('%',#{keyword},'%') 
+				</if>
+			  	<if test="search_option.equals('reportedID')">
+					AND r.reported LIKE concat('%',#{keyword},'%') 
+				</if>
+			</if>
+			
+		</where>
+		
+		 group by r.class_no , r.idx
+		 <if test="search_option!= null and  search_option.equals('post_title')">
+				having mb_ligntning_title LIKE concat ('%',#{keyword},'%') 
+				|| mb_dojang_title LIKE concat('%',#{keyword},'%')  || mb_comment LIKE concat('%',#{keyword},'%') 
+				|| mb_dojang_post LIKE concat('%',#{keyword},'%')  ||mb_groupreview  LIKE concat('%',#{keyword},'%') 
+		   </if>) as dd
+	
+	
+	</select>
+	
+	
+	
+	
+<!-- 블라인드 리스트 -->
+	<select id="blindList" parameterType="map" resultType="com.jmt.admin.dto.ReportDTO">
+	select b.blind_no ,r.class_no ,r.report_no,r.idx,r.reporter ,r.reported ,r.report_proc_status ,r.report_proc_date  ,(select l.lightning_title from lightninglist l  where l.lightning_no =r.idx and r.class_no =l.class_no  )as mb_ligntning_title 
+		,(select c.comment_content  from comment c  where c.comment_no  =r.idx  and r.class_no =c.class_no  )as mb_comment
+		,(select d.dojang_title  from  dojanglist d  where d.dojang_no  =r.idx and r.class_no  =d.class_no   )as mb_dojang_title
+		,(select d2.dojangPost_subject  from  dojangpost d2  where d2.dojangPost_no  =r.idx and r.class_no = d2.class_no  )as mb_dojang_post
+		,(select g.review_title  from groupreview g where g.groupReview_no = r.idx )as mb_group_review
+		from blind b  left outer join report r on r.report_no = b.report_no  
+		<where>
+			<if test="status_option!= null ">
+				<if test="status_option.equals('blind')">
+			 		 r.report_proc_status  ='블라인드' 
+			 	</if>
+			 	<if test="status_option.equals('end')">
+			 		 r.report_proc_status  ='공개' 
+			 	</if>
+			</if>	
+			
+			<if test="search_option != null ">
+	  			<if test="search_option.equals('reporterID')">
+					AND r.reporter LIKE concat('%',#{keyword},'%') 
+				</if>
+			  	<if test="search_option.equals('reportedID')">
+					AND r.reported LIKE concat('%',#{keyword},'%') 
+				</if>
+			</if>
+			
+		</where>
+		  group by r.class_no , r.idx 
+		  <if test="search_option!= null and  search_option.equals('post_title')">
+				having mb_ligntning_title LIKE concat ('%',#{keyword},'%') 
+				|| mb_dojang_title LIKE concat('%',#{keyword},'%')  || mb_comment LIKE concat('%',#{keyword},'%') 
+				|| mb_dojang_post LIKE concat('%',#{keyword},'%')  ||mb_groupreview  LIKE concat('%',#{keyword},'%') 
+		   </if>
+		
+		ORDER BY r.report_proc_date DESC limit #{cnt} offset #{offset}
+	</select>
+	
+	
+	
+	
+<!-- 	<select id="blindHistory" resultType="com.jmt.admin.dto.ReportDTO" parameterType="int" >
+		
+	</select> -->
+	
+	<!-- 블라인드 히스토리 , 게시판 별로 ...  -->
+	<select id="blindHistory1" resultType="com.jmt.admin.dto.ReportDTO" parameterType="int">
+		SELECT  b.admin_id ,b.blind_proc_date ,b.blind_reason ,b.blind_status ,r.report_no  FROM  lightninglist l  join report r on r.idx = l.lightning_no   join blind b on r.report_no =b.report_no  WHERE r.idx =#{idx} order by b.blind_proc_date desc
+	</select>
+	
+	<select id="blindHistory2" resultType="com.jmt.admin.dto.ReportDTO" parameterType="int">
+	SELECT  b.admin_id ,b.blind_proc_date ,b.blind_reason ,b.blind_status ,r.report_no  FROM  comment c   join report r on r.idx = c.comment_no  join blind b on r.report_no =b.report_no  WHERE r.idx =#{idx} order by b.blind_proc_date desc
+	</select>
+	<select id="blindHistory3" resultType="com.jmt.admin.dto.ReportDTO" parameterType="int">
+		SELECT  b.admin_id ,b.blind_proc_date ,b.blind_reason ,b.blind_status ,r.report_no  FROM dojanglist d  join report r on r.idx = d.dojang_no   join blind b on r.report_no =b.report_no  WHERE r.idx =#{idx} order by b.blind_proc_date desc
+	</select>
+	<select id="blindHistory4" resultType="com.jmt.admin.dto.ReportDTO" parameterType="int">
+		SELECT  b.admin_id ,b.blind_proc_date ,b.blind_reason ,b.blind_status ,r.report_no  FROM  dojangpost d  join report r on r.idx = d.dojangPost_no  join blind b on r.report_no =b.report_no  WHERE r.idx =#{idx} order by b.blind_proc_date desc
+	</select>
+	<select id="blindHistory6" resultType="com.jmt.admin.dto.ReportDTO" parameterType="int">
+		SELECT  b.admin_id ,b.blind_proc_date ,b.blind_reason ,b.blind_status ,r.report_no  FROM  groupreview g  join report r on r.idx = g.groupReview_no  join blind b on r.report_no =b.report_no  WHERE r.idx =#{idx} order by b.blind_proc_date desc
+	</select>
+	
+	
+	<!-- 신고 게시글 상태 바뀔 때 동일한 게시글을 신고한 글들의 상태 변경 -->
+	<update id="changeStatus" parameterType="map">
+		update report r set r.report_proc_status =#{report_status},r.report_proc_date=now() where r.class_no =#{class_no} and r.idx=#{idx} 
+	</update>
+	
+	<!-- 멤버 리스트  -->
+	
+	<select id="allMemberListCount" resultType="int" parameterType="map">
+		select count(m.member_id) from `member` m left outer join profile f on m.member_id = f.member_id
+		left outer join grade g on f.grade_no  = g.grade_no
+		<where>
+			<if test="list_option !=null">
+				<if test="list_option.equals('블랙리스트')">
+					m.member_status ='블랙리스트'
+				</if>
+				<if test="list_option.equals('탈퇴')">
+					m.member_status ='탈퇴회원'
+				</if>
+			</if>
+			
+			<if test = "memberSearch != '' and memberSearch != null">
+				<if test='memberSearch.equals("memberID")'>
+					AND m.member_id  LIKE concat('%',#{keyword},'%') 
+				</if>
+				<if test="memberSearch.equals('grade')">
+					AND g.grade_name LIKE concat('%',#{keyword},'%')
+				</if>
+			</if>
+			
+		</where>
+	</select>
+	
+	
+	<select id="MemberList" resultType="com.jmt.admin.dto.ReportDTO"  parameterType="map">
+		select m.member_id  , m.member_name ,m.member_birth , m.member_status ,f.profile_job ,g.grade_name  
+		from member m left outer  join profile f on m.member_id = f.member_id
+		left outer join grade g on f.grade_no  = g.grade_no
+		<where>
+			<if test='list_option !=null'>
+				<if test='list_option.equals("블랙리스트")'>
+					member_status ='블랙리스트'
+				</if>
+				<if test='list_option.equals("탈퇴")'>
+					member_status ='탈퇴회원'
+				</if>
+			</if>
+			
+			<if test = "memberSearch != '' and memberSearch != null">
+				<if test='memberSearch.equals("memberID")'>
+					AND m.member_id  LIKE concat('%',#{keyword},'%') 
+				</if>
+				<if test="memberSearch.equals('grade')">
+					AND g.grade_name LIKE concat('%',#{keyword},'%')
+				</if>
+			</if>
+		</where>
+		ORDER BY f.profile_no DESC limit #{cnt} offset #{offset}
+	</select>
+	
+	<select id="memberDetail" parameterType="String" resultType="com.jmt.admin.dto.ReportDTO">
+			SELECT m.member_id  , m.member_name ,m.member_birth , m.member_status ,f.profile_job ,f.profile_gender,g.grade_name  ,m.member_email
+			FROM member m left outer  join profile f on m.member_id = f.member_id
+			LEFT OUTER JOIN grade g on f.grade_no  = g.grade_no
+			WHERE m.member_id = #{member_id}
+	</select>
+	
+	<select id="blindMemberList" parameterType="map" resultType="com.jmt.admin.dto.ReportDTO">
+			select b.blind_no, b.admin_id ,c2.class_name,b.blind_proc_date  ,r.report_no,r.idx,r.reporter ,r.reported ,b.blind_status  ,r.report_proc_date  ,(select l.lightning_title from lightninglist l  where l.lightning_no =r.idx and r.class_no =l.class_no  )as mb_ligntning_title 
+		,(select c.comment_content  from comment c  where c.comment_no  =r.idx  and r.class_no =c.class_no  )as mb_comment
+		,(select d.dojang_title  from  dojanglist d  where d.dojang_no  =r.idx and r.class_no  =d.class_no   )as mb_dojang_title
+		,(select d2.dojangPost_subject  from  dojangpost d2  where d2.dojangPost_no  =r.idx and r.class_no = d2.class_no  )as mb_dojang_post
+		,(select g.review_title  from groupreview g where g.groupReview_no = r.idx and r.class_no = g.class_no  )as mb_groupreview
+		from blind b  left outer join report r  on r.report_no = b.report_no 
+		left outer join codetable c2 ON c2.class_no =r.class_no 
+		left outer join `member` m on m.member_id =b.member_id  where m.member_id =#{member_id}
+		order by b.blind_proc_date desc  limit #{cnt} offset #{offset}
+	</select>
+	
+	
+	<select id="blindMemberCount" parameterType="map" resultType="int">
+		select count(aa.blind_no) from(select b.blind_no, b.admin_id ,b.blind_proc_date ,c2.class_name  ,r.report_no,r.idx,r.reporter ,r.reported ,b.blind_status  ,r.report_proc_date  ,(select l.lightning_title from lightninglist l  where l.lightning_no =r.idx and r.class_no =l.class_no  )as mb_ligntning_title 
+		,(select c.comment_content  from comment c  where c.comment_no  =r.idx  and r.class_no =c.class_no  )as mb_comment
+		,(select d.dojang_title  from  dojanglist d  where d.dojang_no  =r.idx and r.class_no  =d.class_no   )as mb_dojang_title
+		,(select d2.dojangPost_subject  from  dojangpost d2  where d2.dojangPost_no  =r.idx and r.class_no = d2.class_no  )as mb_dojang_post
+		,(select g.review_title  from groupreview g where g.groupReview_no = r.idx and r.class_no = g.class_no  )as mb_groupreview
+		from blind b  left outer join report r  on r.report_no = b.report_no 
+		left outer join codetable c2 ON c2.class_no =r.class_no 
+		left outer join `member` m on m.member_id =b.member_id  where m.member_id =#{member_id})  aa
+	</select>
+	
+	
+	<!-- 블랙 등록 -->
+	<insert id="blackReg" parameterType="hashmap">
+		INSERT INTO blacklist
+	(blacklist_proc_date, blacklist_proc_reason, member_id, admin_id, blacklist_status) VALUES(now(), #{reason}, #{member_id}, #{loginId}, #{black})
+	</insert>
+	<!-- 블랙 등록시 멤버 변경 -->
+	<update id="blackUPdate" parameterType="hashmap">
+		UPDATE member SET member_status =  #{black} WHERE member_id = #{member_id}
+	</update>
+	
+	
+	
+	<!-- 블랙리스트 1개  최신-->
+	<select id="blackList" parameterType="string"  resultType="com.jmt.admin.dto.ReportDTO">
+		select b.admin_id ,b.blacklist_status ,b.blacklist_proc_reason,b.member_id ,b.blacklist_proc_date from blacklist b where b.member_id=#{member_id} ORDER BY b.blacklist_proc_date DESC LIMIT 1 
+	</select>
+	
+	
+	
+	<!-- 해당 유저 블랙리스트 all -->
+	<select id="blackMemberList" parameterType="map"  resultType="com.jmt.admin.dto.ReportDTO">
+		select b.admin_id ,b.blacklist_status ,b.blacklist_proc_reason,b.member_id ,b.blacklist_proc_date from blacklist b where b.member_id=#{member_id} ORDER BY b.blacklist_proc_date DESC  limit #{cnt} offset #{offset}
+	</select>
+	
+	
+	<!-- 카운트 -->
+	<select id="blackMemberCount" parameterType="string" resultType="int">
+		select count(bb.blacklist_no) from (select  b.blacklist_no, b.admin_id ,b.blacklist_status ,b.blacklist_proc_reason,b.member_id ,b.blacklist_proc_date from blacklist b )  bb where
+		bb.member_id=#{member_id} ORDER BY bb.blacklist_proc_date DESC 
+	</select>
+
+
+
+
+
+	
+	<!-- 등급 -->
+	
+	<select id="testPost"  parameterType="string" resultType="int">
+	select count(comment_no) from comment c where c.member_id  =#{param1};
+	</select>
+	
+	<select id="spoonList" resultType="com.jmt.admin.dto.TestDto">
+		select * from grade
+	</select>
+	
+	<update id="levelUp" parameterType="map">
+		update profile f set f.grade_no  = #{level_no} where f.member_id = #{loginId}
+	</update>
+	
+	<!--  등급 변경시 알림 -->
+	<insert id="gradeNoti" parameterType="map">
+		INSERT INTO noti(class_no,noti_content,idx,info,member_id)
+		values(9
+				  ,"등급으로 변경되었습니다."
+				  ,(select profile_no from profile where member_id=#{loginId})
+				  ,(select grade_name from grade where grade_no = #{level_no})
+				  ,#{loginId})		
+	</insert>
+	
+	
+	<select id="chkGrade" resultType="int" parameterType="String"> 
+		select p.grade_no from profile p join grade g ON p.grade_no =g.grade_no  where p.member_id =#{loginId};
+	</select>
+	
+	
+	<!-- 알림  -->
+	<insert id="blindNoti">
+		INSERT INTO noti(class_no,idx,noti_content,member_id,info)
+			values
+			(#{param1}
+			,#{param2}
+			,"글이 블라인드 처리 됐습니다"
+			,#{param3},
+			<if test="param1==1">(select lightning_title from lightninglist where lightning_no = #{param2})</if>
+			<if test="param1==2">(select comment_content from comment where comment_no = #{param2})</if>
+			<if test="param1==3">(select dojang_title from dojanglist where dojang_no = #{param2})</if>
+			<if test="param1==4">(select dojangPost_subject from dojangPost where dojangPost_no = #{param2})</if>
+			<if test="param1==5">(select comment_content from comment where comment_no = #{param2})</if>
+			<if test="param1==6">(select review_title from groupReview where groupReview_no = #{param2})</if>
+			<if test="param1==7">(select comment_content from comment where comment_no = #{param2})</if>
+			<if test="param1==8">(select comment_content from comment where comment_no = #{param2})</if>
+			)
+	</insert>
+	
+</mapper>

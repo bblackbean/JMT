@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jmt.moim.dao.DojangDAO">
+
+	<select id="dojangList" parameterType="hashmap" resultType="dojang">
+		SELECT 
+			d.dojang_no
+			, f.food_name
+			, d.leader_id
+			, d.dojang_title
+			, d.dojang_create
+			,(select count(member_id)+1 from apply a where class_no = 3 and status = '승인' and a.idx = d.dojang_no) as member_count
+			,(select status from apply a where class_no = 3 and a.idx = d.dojang_no and member_id=#{loginId}) as test
+			, d.dojang_status
+			, d.people_num
+			, d.gender
+		FROM dojanglist d
+		JOIN food f ON d.food_no = f.food_no
+		WHERE d.dojang_status IN ("모집중","모집마감")
+		<include refid="selectedListSql"></include>
+		
+		ORDER BY d.dojang_no DESC limit #{cnt} OFFSET #{offset}
+	</select>
+	
+	<sql id="selectedListSql">
+			<if test = "search != null &amp;&amp; !search.equals('')">
+				and d.dojang_title LIKE CONCAT('%',#{search}, '%') 
+			</if>
+		
+			<if test = "foodname != null &amp;&amp; !foodname.equals('')">
+				and d.food_no = #{foodname}  
+			</if>
+			
+			<if test = "eat_speed != null &amp;&amp; !eat_speed.equals('')">
+				and eat_speed = #{eat_speed}  
+			</if>
+			
+			<if test = "job != null &amp;&amp; !job.equals('')">
+				and job = #{job}  
+			</if>
+			
+			<if test = "gender!=null">
+				and d.gender = #{gender}  
+			</if>
+
+	</sql>
+	
+	
+	
+	<select id="allCount" parameterType="hashmap" resultType="int">
+		SELECT
+			COUNT(dojang_no)
+		FROM dojanglist d
+		WHERE d.dojang_status IN ("모집중","모집마감")
+		<include refid="selectedListSql"></include>
+		
+	</select>
+	
+	<select id="foodname" resultType="dojang">
+		SELECT food_no, food_name FROM food
+	</select>
+	
+	
+	<select id="dojangDetail" parameterType="String" resultType="dojang">
+		SELECT 
+			d.dojang_no
+			,d.dojang_title
+			,d.leader_id
+			,d.people_num
+			,d.gender
+			,d.eat_speed
+			,d.job
+			,(select count(member_id)+1 from apply a where class_no = 3 and status = '승인' and a.idx = d.dojang_no) as member_count
+			,(select status from apply a where class_no = 3 and a.idx = d.dojang_no and member_id=#{loginId}) as test
+			,d.dojang_create
+			,f.food_name
+			,d.dojang_content
+			FROM dojanglist d
+			JOIN food f ON d.food_no = f.food_no
+			WHERE d.dojang_no = #{dojang_no}	
+	</select>
+	
+	<select id="dojangGreview" parameterType="String" resultType="dojang">
+			SELECT
+				g.groupReview_no
+				,g.member_id
+				,g.review_title
+				,review_date 
+				FROM groupreview g
+				JOIN dojanglist d ON d.dojang_no = idx AND g.class_no = 3
+				WHERE d.dojang_no = #{dojang_no}
+	</select>
+	
+	<insert id="dojangApply">
+		INSERT INTO apply(idx,class_no,status,member_id)
+			VALUES(#{param1},3,'대기',#{param2})
+	</insert>
+	
+	<select id="applyStatus" resultType="dojang">
+		SELECT status 
+			FROM apply a 
+		WHERE class_no = 3 AND member_id = #{param1} AND idx = #{param2}
+	</select>
+	
+	<select id="profileStatus" resultType="dojang">
+		SELECT 
+			eat_speed
+			,profile_gender
+			,profile_job
+			FROM profile WHERE member_id = #{param1}
+	</select>
+	
+	<insert id="dojangReg" parameterType="hashmap">
+		INSERT INTO dojanglist(dojang_title,food_no,people_num,eat_speed,gender,job,dojang_content,leader_id,dojang_status,class_no)
+			VALUES (#{dojang_title},#{food_name},#{points},#{eat_speed},#{gender},#{job},#{dojang_content},#{loginId},'모집중',3)
+	</insert>
+	
+	
+	<select id="reported" resultType="String">
+		SELECT leader_id FROM dojanglist where dojang_no =#{param1}
+	</select>
+	
+	<select id="dojangTitle" resultType="String">
+		SELECT dojang_title FROM dojanglist where dojang_no =#{param1}
+	</select>
+	
+	
+	<insert id="dojangReport" parameterType="hashmap">
+		INSERT INTO report (report_reason,class_no,idx,reporter,reported)
+			VALUES(
+			<if test="!report_reason.equals('기타')">#{report_reason}</if>
+			<if test="report_reason.equals('기타')">#{report_text}</if>
+			,3,#{dojang_no},#{reporter},#{reported})
+	</insert>
+	
+	
+	<select id="dojangHome" resultType="dojang" parameterType="hashmap">
+		SELECT leader_id,d.dojang_no,d.dojangPost_subject,d.dojangPost_content,d.member_id,d.dojangPost_date,d.dojangPost_no,d.dojangPost_type,r.restaurant_name
+			FROM dojangpost d LEFT OUTER JOIN restaurant r ON r.restaurant_no = d.restaurant_no 
+			JOIN dojanglist t ON t.dojang_no = d.dojang_no
+			WHERE d.dojang_no = #{dojang_no} AND d.dojangPost_status = "공개" ORDER BY dojangPost_no DESC limit #{cnt} OFFSET #{offset}
+	</select>
+	
+	<select id="dojangHomeL" resultType="dojang" parameterType="hashmap">
+		SELECT leader_id,d.dojang_no,d.dojangPost_subject,d.dojangPost_content,d.member_id,d.dojangPost_date,d.dojangPost_no,d.dojangPost_type,r.restaurant_name
+			FROM dojangpost d LEFT OUTER JOIN restaurant r ON r.restaurant_no = d.restaurant_no 
+			JOIN dojanglist t ON t.dojang_no = d.dojang_no
+			WHERE d.dojang_no = #{dojang_no} AND dojangPost_type ="공지게시판" AND d.dojangPost_status = "공개"
+			ORDER BY dojangPost_no DESC limit #{cnt} OFFSET #{offset}
+	</select>
+	
+	<select id="dojangHomeM" resultType="dojang" parameterType="hashmap">
+	SELECT leader_id,d.dojang_no,d.dojangPost_subject,d.dojangPost_content,d.member_id,d.dojangPost_date,d.dojangPost_no,d.dojangPost_type,r.restaurant_name
+			FROM dojangpost d LEFT OUTER JOIN restaurant r ON r.restaurant_no = d.restaurant_no 
+			JOIN dojanglist t ON t.dojang_no = d.dojang_no
+			WHERE d.dojang_no = #{dojang_no} AND dojangPost_type ="일반게시판" AND d.dojangPost_status = "공개"
+			ORDER BY dojangPost_no DESC limit #{cnt} OFFSET #{offset}
+	</select>
+	
+	<select id="allCountHome" resultType="int" parameterType="hashmap">
+		SELECT count(dojangPost_no) FROM dojangpost where dojang_no = #{dojang_no}
+	</select>
+	
+	<select id="allCountHomeL" resultType="int" parameterType="hashmap">
+		SELECT count(dojangPost_no) FROM dojangpost where dojang_no = #{dojang_no} AND dojangPost_type ="공지게시판"
+	</select>
+	
+	<select id="allCountHomeM" resultType="int" parameterType="hashmap">
+		SELECT count(dojangPost_no) FROM dojangpost where dojang_no = #{dojang_no} AND dojangPost_type ="일반게시판"
+	</select>
+	
+	<select id="dojangHomeMember" resultType="dojang">
+		SELECT member_id FROM apply WHERE class_no = 3 AND status = '승인' AND idx = #{param1};
+	</select>
+	
+	<select id="dojangHomeDetail" resultType="dojang">
+		SELECT leader_id,d.dojang_no,dojangPost_subject,dojangPost_content,member_id,dojangPost_date,dojangPost_no,dojangPost_type,r.restaurant_name
+			FROM dojangpost d LEFT OUTER JOIN restaurant r ON r.restaurant_no = d.restaurant_no
+			JOIN dojanglist t ON t.dojang_no = d.dojang_no
+			WHERE dojangPost_no = #{param1}
+	
+	</select>
+	
+	
+	<insert id="dojangPostReg" parameterType="dojang"
+		useGeneratedKeys="true" keyColumn="dojangPost_no" keyProperty="dojangPost_no">
+		INSERT INTO dojangpost (dojangPost_subject,dojangPost_content,dojang_no,restaurant_no,member_id,dojangPost_type,dojangPost_status)
+			VALUES(#{dojangPost_subject},#{dojangPost_content},#{dojang_no}
+			<choose>
+				<when test="restaurant_no != null and restaurant_no != ''">
+					,#{restaurant_no}							
+				</when>
+				<otherwise>
+					,null
+				</otherwise>
+			</choose>
+			,#{member_id},#{dojangPost_type},"공개"); 
+	</insert>
+	
+	<insert id="filewrite">
+		INSERT INTO photo(photo_newFileName,photo_oriFileName,class_no,idx)
+			VALUES(#{param1},#{param2},4,#{param3})
+	</insert>
+	
+	<select id="gpRestaurantSearchList" resultType="dojang" parameterType="hashmap">
+		SELECT 
+			r.restaurant_no
+			,r.restaurant_name
+			,r.restaurant_address
+			,f.food_name from restaurant r JOIN food f ON f.food_no = r.food_no
+			
+		<include refid="RestaurantSearchSql"></include>
+		
+		ORDER BY r.restaurant_no ASC limit 30
+	</select>
+	
+	
+	<sql id="RestaurantSearchSql">
+		<trim prefix="where">
+		<if test="gpSearchCondition != null and gpSearchCondition != '' and searchContent != null and searchContent != ''">
+			<if test = "gpSearchCondition.equals('restaurant_name')">
+				r.restaurant_name LIKE CONCAT('%',#{searchContent}, '%')
+			</if>
+			<if test = "gpSearchCondition.equals('restaurant_address')">
+				r.restaurant_address LIKE CONCAT('%',#{searchContent}, '%') 
+			</if>
+		</if>
+		</trim>
+	</sql>
+	
+	<update id="dojangPostUpdate" parameterType="hashmap">
+		UPDATE dojangpost SET dojangPost_subject = #{dojangPost_subject}
+					,dojangPost_content = #{dojangPost_content}
+					<choose>
+						<when test="restaurant_no != null and restaurant_no != ''">
+							,restaurant_no = #{restaurant_no}				
+						</when>
+						<otherwise>
+							,restaurant_no = null
+						</otherwise>
+					</choose>
+					,dojangPost_type = #{dojangPost_type}
+					WHERE dojangPost_no = #{dojangPost_no}
+	</update>
+	
+	<select id="postReported" resultType="String">
+		SELECT member_id FROM dojangpost WHERE dojangPost_no = #{param1}
+	</select>
+	
+	<insert id="dojangPostReport" parameterType="hashmap">
+		INSERT INTO report (report_reason,class_no,idx,reporter,reported)
+			VALUES(
+			<if test="!report_reason.equals('기타')">#{report_reason}</if>
+			<if test="report_reason.equals('기타')">#{report_text}</if>
+			,4,#{dojangPost_no},#{reporter},#{reported})
+	</insert>
+	
+	<update id="dojangPostDelete" parameterType="String">
+		UPDATE dojangpost SET dojangPost_status = "숨김"
+		WHERE dojangPost_no = #{dojangPost_no}
+	</update>
+	
+	<select id="dojangHomeMstatus" resultType="String">
+		SELECT member_id FROM apply WHERE class_no = 3 AND status = '승인' AND idx = #{param1} AND member_id = #{param2}
+	</select>
+	
+	<update id="Mstatus">
+		UPDATE apply SET status = "탈퇴"
+		WHERE class_no = 3 AND idx = #{param1} AND member_id = #{param2}
+	</update>
+	
+	
+	<!-- 도장깨기 방 게시글 댓글 신고 -->
+	<insert id="dojangCmtReport" parameterType="hashmap">
+		INSERT INTO report(reporter,reported,class_no,report_reason,idx)
+			VALUES(
+			#{loginId}
+			,(select member_id from comment where comment_no = #{comment_no})
+			,5,
+			<if test="!report_reason.equals('기타')">#{report_reason}</if>
+			<if test="report_reason.equals('기타')">#{report_reason_text}</if>
+			,#{comment_no})
+	</insert>
+	
+	
+</mapper>

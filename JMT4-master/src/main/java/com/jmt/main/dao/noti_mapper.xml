@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jmt.main.dao.NotiDAO">
+	
+	<select id="notiChk" resultType="int">
+		SELECT count(noti_no) FROM noti WHERE member_id = #{param1} AND noti_read ="안읽음"
+	</select>
+	
+	<select id="notiList" resultType="noti" parameterType="String">
+		SELECT * FROM noti WHERE member_id = #{loginId} ORDER BY noti_date DESC
+	</select>
+	
+	<update id="notiStatusUpdate" parameterType="String">
+			UPDATE noti SET noti_read="읽음" WHERE member_id = #{param1} AND noti_read = "안읽음"
+	</update>
+	
+	<delete id="notiDel" parameterType="String">
+		DELETE FROM noti WHERE noti_no = #{noti_no}
+	</delete>
+</mapper>

@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jmt.groupreview.dao.GroupReviewDAO">
+	<!-- 모임후기 리스트 -->
+	<select id="groupReviewList" resultType="groupReview">
+		 SELECT g.groupReview_no
+			 ,g.review_title
+			 ,l.lightning_title
+			 ,dojang_title
+			 ,c.class_name
+			 ,g.review_date
+		 FROM groupreview g
+		 LEFT OUTER JOIN lightninglist l ON l.lightning_no = idx AND g.class_no = 1
+		 LEFT OUTER JOIN dojangList ON dojang_no = idx AND g.class_no = 3
+		 JOIN codetable c ON g.class_no = c.class_no
+		<where>
+			g.groupReview_status = "노출"
+			<if test="searchCate != null and searchCate !=''">
+				<if test="searchCate.equals('lightning')">
+					AND lightning_title LIKE CONCAT('%',#{keyword},'%')
+				</if>
+				<if test="searchCate.equals('dojang')">
+					AND dojang_title LIKE CONCAT('%',#{keyword},'%')
+				</if>
+			</if>
+		</where>
+		ORDER BY groupReview_no DESC limit #{cnt} OFFSET #{offset}
+	</select>
+	
+	<select id="allCount" parameterType="hashmap" resultType="int">
+		SELECT COUNT(groupReview_no) 
+		FROM groupreview g
+		LEFT OUTER JOIN lightninglist l ON l.lightning_no = idx AND g.class_no = 1
+		LEFT OUTER JOIN dojangList ON dojang_no = idx AND g.class_no = 3
+		JOIN codetable c ON g.class_no = c.class_no
+		<where>
+			g.groupReview_status = "노출"
+			<if test="searchCate != null and searchCate !=''">
+				<if test="searchCate.equals('lightning')">
+					AND lightning_title LIKE CONCAT('%',#{keyword},'%')
+				</if>
+				<if test="searchCate.equals('dojang')">
+					AND dojang_title LIKE CONCAT('%',#{keyword},'%')
+				</if>
+			</if>
+		</where>
+	</select>
+	
+	<!-- 모임후기 상세보기 -->
+	<select id="groupReviewDetail" parameterType="String" resultType="groupReview">
+		SELECT review_title
+			,(SELECT member_id FROM member m WHERE member_id=#{param2}) as login_id
+			,groupReview.member_id
+			,member_name
+			,review_date
+			,lightning_title
+			,dojang_title
+			,class_name
+			,lightningList.class_no as class_no
+			,dojangList.class_no as dojang_class_no
+			,review_content
+			,groupReview_no
+			,groupReview.idx
+			,groupReview.groupReview_status
+			,lightning_no
+			,dojang_no
+		FROM groupReview
+		LEFT OUTER JOIN lightningList ON lightning_no = idx and groupReview.class_no = 1
+		LEFT OUTER JOIN dojangList ON dojang_no = idx AND groupReview.class_no = 3
+		LEFT OUTER JOIN member ON member.member_id = groupReview.member_id
+		JOIN codeTable ON groupReview.class_no = codeTable.class_no
+		WHERE groupReview_no = #{param1}
+	</select>
+
+	
+	<!-- 글쓰기 -->
+	<insert id="groupReviewRegister" parameterType="groupReview"
+	useGeneratedKeys="true" keyColumn="groupReview_no" keyProperty="groupReview_no">
+			INSERT INTO groupReview(review_title,review_content,groupReview_status
+			,member_id,class_no,idx)
+			VALUES(#{review_title},#{review_content},"노출",#{member_id},
+			<if test="class_no != 3">1</if>
+			<if test="class_no == 3">3</if>
+			,#{idx})
+	</insert>
+	
+	<!-- DB에 파일 저장 -->
+	<insert id="grFileWrite">
+		INSERT INTO photo(photo_newFileName,photo_oriFileName,class_no,idx)
+		VALUES(#{param1},#{param2},6,#{param3})
+	</insert>
+	
+	<select id="grPhotoList" parameterType="String" resultType="groupReview">
+		SELECT g.idx,p.photo_newFileName FROM photo 
+		JOIN codeTable c ON p.class_no = c.class.no
+		LEFT OUTER JOIN groupReview g ON c.class.no = g.groupReview
+		WHERE idx = #{idx}
+	</select>
+	
+	<!-- 도장리스트 -->
+	<select id="groupList" resultType="groupReview">
+		<!-- SELECT leader_id,d.dojang_no,d.member_id,t.dojang_title,t.class_no,c.class_name
+		FROM dojangPost d
+		LEFT OUTER JOIN dojangList t ON t.dojang_no = d.dojang_no
+		LEFT OUTER JOIN codeTable c ON t.class_no = c.class_no
+		WHERE t.class_no=3 AND leader_id OR member_id = #{param1}
+		GROUP BY leader_id,d.dojang_no,d.member_id -->
+		
+		select d.leader_id,a.member_id,d.dojang_title,d.dojang_no from apply a right outer join dojanglist d on d.dojang_no = a.idx 
+		where d.leader_id = #{param1} or a.status = "승인" and member_id =#{param1} group by d.dojang_title
+	</select>
+	
+	<!-- 번개리스트 -->
+	<select id="lightGroupList" resultType="groupReview">
+		<!-- SELECT a.member_id, l.lightning_title, l.lightning_no, l.leader_id
+			,c.class_name, a.class_no
+		FROM apply a
+		JOIN codeTable c ON a.class_no = c.class_no
+		LEFT OUTER JOIN lightningList l ON a.idx = l.lightning_no
+		WHERE a.class_no = 1 AND (a.status = "승인" AND a.member_id = #{param1}) OR l.leader_id = #{param1} -->
+		
+		select l.leader_id,a.member_id,l.lightning_title,l.lightning_no from apply a right outer join lightninglist l on l.lightning_no = a.idx 
+		where l.leader_id = #{param1} or a.status = "승인" and member_id =#{param1} group by l.lightning_title;
+	</select>
+	
+	
+	<!-- 게시글 신고 -->
+	<insert id="grReviewReport" parameterType="hashmap">
+		INSERT INTO report(reporter,reported,class_no,report_reason,idx)
+			VALUES(
+			#{loginId}
+			,(select member_id from groupReview where groupReview_no = #{groupReview_no})
+			,6,
+			<if test="!report_reason.equals('기타')">#{report_reason}</if>
+			<if test="report_reason.equals('기타')">#{report_reason_text}</if>
+			,#{groupReview_no})
+	</insert>
+	
+	<!-- 모임후기 댓글 신고 -->
+	<insert id="grCmtReport" parameterType="hashmap">
+		INSERT INTO report(reporter,reported,class_no,report_reason,idx)
+			VALUES(
+			#{loginId}
+			,(select member_id from comment where comment_no = #{comment_no})
+			,7,
+			<if test="!report_reason.equals('기타')">#{report_reason}</if>
+			<if test="report_reason.equals('기타')">#{report_reason_text}</if>
+			,#{comment_no})
+	</insert>
+	
+	<!-- 게시글 삭제(숨김) -->
+	<update id="groupReviewDelete" parameterType="hashmap">
+		UPDATE groupReview SET groupReview_status = "숨김"
+		WHERE groupReview_no = #{groupReview_no}
+	</update>
+	
+	<!-- 수정 -->
+	<update id="groupReviewUpdate" parameterType="hashmap">
+		UPDATE groupReview SET review_title = #{review_title}
+			,review_content = #{review_content}
+			,class_no = #{class_no}
+			<!-- <if test="class_no != 3">class_no = 1</if>
+			<if test="class_no == 3">class_no = 3</if> -->
+			,idx = #{idx}
+			WHERE groupReview_no = #{groupReview_no}
+	</update>
+</mapper>

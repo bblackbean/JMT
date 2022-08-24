@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jmt.mypage.dao.MypageDAO">
+
+	<select id="mypage" resultType="member">
+		SELECT * FROM profile p INNER JOIN member m ON p.member_id = #{param1} and m.member_id = #{param1}
+	</select>
+	
+	<select id="blindCount" resultType="int">
+		SELECT COUNT(blind_no) FROM blind WHERE member_id = #{param1}
+	</select>
+	
+	<select id="follower" resultType="int">
+		SELECT COUNT(follower_id) From follow f WHERE follower_id = #{param1}
+	</select>
+	
+	<select id="following" resultType="int">
+		SELECT COUNT(following_id) From follow f WHERE following_id = #{param1}
+	</select>
+	
+	<select id="profile_no" resultType="integer">
+		SELECT profile_no FROM profile WHERE member_id = #{param1}
+	</select>
+	
+	<select id="photoList" resultType="photo">
+		SELECT * FROM photo p2 WHERE class_no=9 AND p2.idx = #{param1}
+	</select>
+	
+	<select id="photoUpdate" resultType="photo">
+		SELECT * FROM photo p2 WHERE class_no=9 AND p2.idx = #{param1}
+	</select>
+	
+	
+	<update id="fileUpdate">
+		UPDATE photo SET photo_oriFileName = #{param1}, photo_newFileName = #{param2}
+		WHERE idx = #{param3} and class_no=9
+	</update>
+	
+	
+	<select id="foodList" resultType="member">
+		SELECT * FROM food
+	</select>
+	
+	<select id="oriPass" parameterType="hashmap" resultType="String">
+		SELECT member_pw FROM member WHERE member_id = #{loginId}
+	</select>
+	
+	<update id="passUpdate" parameterType="hashmap">
+		UPDATE member SET member_pw = #{changePass} WHERE member_id = #{loginId}
+	</update>
+	
+	<update id="profileUpdate" parameterType="member">
+		UPDATE profile SET profile_job = #{profile_job}, eat_speed = #{eat_speed}, food_no = #{food_no} WHERE member_id = #{member_id}
+	</update>
+	
+	<update id="memberUpdate" parameterType="member">
+		UPDATE member SET member_name = #{member_name} WHERE member_id = #{member_id}
+	</update>
+	
+	<delete id="photoDel" parameterType="int">
+		UPDATE  photo SET  idx = #{profile_no}
+	</delete>
+	
+	<!-- UPDATE curriculm SET curri_oriName = #{param1}, curri_newName = #{param2}
+		WHERE sub_no = #{param3} -->
+	
+	<insert id="fileWrite">
+		INSERT INTO photo(class_no, photo_oriFileName, photo_newFileName, idx)
+			VALUES('9', #{param1}, #{param2}, #{param3})
+	</insert>
+	
+	<select id="profile_num" resultType="int" parameterType="member">
+		SELECT profile_no FROM profile WHERE member_id = #{member_id}
+	</select>
+	
+	<update id="memberDrop">
+		UPDATE member SET member_status = '탈퇴회원' WHERE member_id = #{param1}
+	</update>
+	
+	<select id="pwCon" resultType="String">
+		SELECT member_pw FROM member WHERE member_id = #{param1}
+	</select>
+	
+	<select id="followingList" resultType="hashmap">
+		SELECT follower_id, profile_no, (SELECT photo_newFileName FROM photo p2 join profile p on idx = profile_no where member_id = #{param1}) AS photo_newFileName 
+			FROM follow f JOIN profile p ON p.member_id = f.follower_id WHERE following_id = #{param1}
+	</select>
+	
+	<select id="followerList" resultType="hashmap">
+		SELECT following_id, profile_no, (SELECT photo_newFileName FROM photo p2 join profile p on idx = profile_no where member_id = #{param1}) AS photo_newFileName
+			FROM follow f JOIN profile p ON p.member_id = f.following_id WHERE follower_id = #{param1}
+	</select>
+	
+	<select id="otherPage" resultType="member">
+		SELECT profile_no, p.member_id , grade_name, food_name, eat_speed , profile_gender , profile_job 
+		FROM profile p JOIN member m ON m.member_id = p.member_id JOIN food f ON f.food_no = p.food_no 
+		JOIN grade g ON g.grade_no = p.grade_no where profile_no = #{param1}
+	</select>
+	
+	<select id="otherPhoto" resultType="photo">
+		SELECT * FROM photo p2 WHERE class_no=9 AND p2.idx = #{param1}
+	</select>
+	
+	<select id="otherBlind" resultType="int">
+		SELECT COUNT(blind_no) FROM blind WHERE member_id = (SELECT member_id FROM profile p WHERE profile_no = #{param1})
+	</select>
+	
+	<select id="otherFollower" resultType="int">
+		SELECT COUNT(follower_id) FROM follow f WHERE follower_id = (SELECT member_id FROM profile p WHERE profile_no = #{param1})
+	</select>
+	
+	<select id="otherFollowing" resultType="int">
+		SELECT COUNT(following_id) FROM follow f WHERE following_id = (SELECT member_id FROM profile p WHERE profile_no = #{param1})
+	</select>
+	
+	<insert id="follow" parameterType="hashmap">
+		INSERT INTO follow (follower_id, following_id) VALUES(#{loginId}, #{following_id})
+	</insert>
+	
+	<select id="followCon" resultType="String">
+		SELECT follower_id FROM follow WHERE following_id = #{param1} AND follower_id = (SELECT member_id FROM profile p WHERE profile_no = #{param2})
+	</select>
+	
+	<insert id="followRegist">
+		INSERT INTO follow (follower_id, following_id) VALUES (#{param2}, #{param1})
+	</insert>
+	
+	<delete id="unfollow">
+		DELETE FROM follow WHERE follower_id = #{param2} AND following_id = #{param1}
+	</delete>
+	
+	<select id="otherFollowingList" resultType="hashmap">
+		SELECT follower_id, profile_no, (SELECT photo_newFileName FROM photo p2 join profile p on idx = profile_no where member_id = #{param1}) AS photo_newFileName 
+			FROM follow f JOIN profile p ON p.member_id = f.follower_id 
+				WHERE following_id = (SELECT member_id FROM profile p3 WHERE profile_no = #{param1})
+	</select>
+	
+	<select id="otherFollowerList" resultType="hashmap">
+		SELECT following_id, profile_no, (SELECT photo_newFileName FROM photo p2 join profile p on idx = profile_no where member_id = #{param1}) AS photo_newFileName 
+			FROM follow f JOIN profile p ON p.member_id = f.following_id 
+				WHERE follower_id = (SELECT member_id FROM profile p3 WHERE profile_no = #{param1})
+	</select>
+	
+	<select id="myboard" resultType="mypage">
+		SELECT review_title,groupReview_no,class_no FROM groupreview g2 WHERE member_id = #{param1}
+		UNION ALL
+		SELECT dojangPost_subject,dojangPost_no,class_no FROM dojangpost d WHERE member_id = #{param1} LIMIT 3
+	</select>
+	
+	<select id="mycomment" resultType="mypage">
+		SELECT lightning_title, idx, c.class_no FROM lightninglist l JOIN comment c ON lightning_no = idx 
+			WHERE member_id = #{param1} AND c.comment_status = '공개' AND c.class_no = '2'
+		UNION 
+		SELECT dojangPost_subject, idx, c.class_no FROM dojangpost d JOIN comment c ON dojangPost_no = idx 
+			WHERE c.member_id = #{param1} AND c.comment_status = '공개' AND c.class_no = '5'
+		UNION 
+		SELECT restaurant_name, idx, c.class_no FROM restaurant r JOIN comment c ON restaurant_no = idx 
+			WHERE member_id = #{param1} AND c.comment_status = '공개' AND c.class_no = '8' LIMIT 3
+	</select>
+	
+	<select id="myLightning" resultType="mypage">
+		SELECT lightning_title, idx FROM lightninglist l JOIN apply a 
+			ON lightning_no = idx WHERE member_id = #{param1} AND status = '승인' AND a.class_no = '1' AND l.lightning_status = "모집중" LIMIT 3
+	</select>
+	
+	<select id="myDojang" resultType="mypage">
+		SELECT dojang_title, idx FROM dojanglist d JOIN apply a 
+			ON dojang_no = idx WHERE member_id = #{param1} AND status = '승인' AND a.class_no = '3' AND d.dojang_status = "모집중" LIMIT 3
+	</select>
+	
+	<select id="myLightningRoom" resultType="mypage">
+		SELECT lightning_title, lightning_no FROM lightninglist l WHERE leader_id = #{param1} AND l.lightning_status = "모집중" LIMIT 3
+	</select>
+	
+	<select id="myDojangRoom" resultType="mypage">
+		SELECT dojang_title, dojang_no FROM dojanglist d WHERE leader_id = #{param1}  AND d.dojang_status = "모집중" LIMIT 3
+	</select>
+	
+	<select id="dojangCount" resultType="int">
+		SELECT COUNT(dojangPost_no) FROM dojangpost d WHERE member_id = #{param1}
+	</select>
+	
+	<select id="moimCount" resultType="int">
+		SELECT COUNT(groupReview_no) FROM groupreview g WHERE member_id = #{param1}
+	</select>
+	
+	<select id="lightningCount" resultType="int">
+		SELECT COUNT(comment_no) FROM comment c WHERE member_id = #{param1} AND class_no = '2'
+	</select>
+	
+	<select id="dojangCommentCount" resultType="int">
+		SELECT COUNT(comment_no) FROM comment c WHERE member_id = #{param1} AND class_no = '5'
+	</select>
+	
+	<select id="moimCommentCount" resultType="int">
+		SELECT COUNT(comment_no) FROM comment c WHERE member_id = #{param1} AND class_no = '7'
+	</select>
+	
+	<select id="jmtCount" resultType="int">
+		SELECT COUNT(comment_no) FROM comment c WHERE member_id = #{param1} AND class_no = '8'
+	</select>
+	
+	<select id="grade" resultType="String">
+		SELECT grade_name FROM grade g WHERE grade_no = (SELECT grade_no FROM profile p WHERE member_id = #{param1})
+	</select>
+	
+	<select id="photo_new" resultType="String">
+		SELECT photo_newFileName FROM photo p WHERE idx = (SELECT profile_no FROM profile p WHERE member_id = #{param1})
+	</select>
+	
+	<select id="proCon" resultType="String">
+		SELECT member_id FROM profile p WHERE member_id = #{param1}
+	</select>
+	
+	<select id="myBoardArry" resultType="mypage">
+		SELECT groupReview_no, review_title, review_date, (SELECT class_name  FROM codetable c WHERE class_no = '6') AS category FROM groupreview g2 
+			WHERE member_id = #{param1} AND groupReview_status = '노출'
+		UNION ALL
+		SELECT dojangPost_no , dojangPost_subject ,dojangPost_date, (SELECT class_name  FROM codetable c WHERE class_no = '3') AS category FROM dojangpost d 
+			WHERE member_id = #{param1} AND dojangPost_status = '공개' ORDER BY review_date DESC
+	</select>
+	
+	<!-- <select id="myCommentArry" resultType="mypage">
+		SELECT lightning_title, idx FROM lightninglist l JOIN comment c ON lightning_no = idx 
+			WHERE member_id = #{param1} AND c.comment_status = '공개' AND c.class_no = '2'
+		UNION 
+		SELECT dojangPost_subject, idx FROM dojangpost d JOIN comment c ON dojangPost_no = idx 
+			WHERE c.member_id = #{param1} AND c.comment_status = '공개' AND c.class_no = '5'
+		UNION 
+		SELECT restaurant_name, idx FROM restaurant r JOIN comment c ON restaurant_no = idx 
+			WHERE member_id = #{param1} AND c.comment_status = '공개' AND c.class_no = '8'
+	</select> -->
+	
+	<!-- <select id="myMoimArry" resultType="mypage">
+		SELECT lightning_title , (SELECT class_name  FROM codetable c WHERE class_no = '1') AS category FROM lightninglist l WHERE lightning_no = (SELECT idx FROM apply a 
+			WHERE member_id = #{param1} AND class_no = '1' AND status = '승인')
+		UNION ALL
+		SELECT dojang_title,(SELECT class_name  FROM codetable c WHERE class_no = '3') AS category FROM dojanglist d WHERE dojang_no = (SELECT idx FROM apply a 
+			WHERE member_id = #{param1} AND class_no = '3' and status = '승인')
+	</select> -->
+	
+	<select id="lightRoom" resultType="mypage">
+		SELECT lightning_title,lightning_no FROM lightninglist l WHERE leader_id = (SELECT member_id FROM profile p WHERE profile_no = #{param1}) AND l.lightning_status = "모집중" LIMIT 3
+	</select>
+	
+	<select id="dojangRoom" resultType="mypage">
+		SELECT dojang_title, dojang_no  FROM dojanglist d WHERE leader_id = (SELECT member_id FROM profile p WHERE profile_no = #{param1}) AND d.dojang_status = "모집중" LIMIT 3
+	</select>
+	
+	<select id="otherBoard" resultType="mypage">
+		SELECT review_title FROM groupreview g2 WHERE member_id = (select member_id from profile p where profile_no = #{param1})
+		UNION ALL
+		SELECT dojangPost_subject FROM dojangpost d WHERE member_id = (select member_id from profile p where profile_no = #{param1}) LIMIT 3
+	</select>
+	
+	<select id="otherCom" resultType="mypage">
+		SELECT lightning_title, idx FROM lightninglist l JOIN comment c ON lightning_no = idx 
+			WHERE member_id = (select member_id from profile p where profile_no = '20') AND c.comment_status = '공개' AND c.class_no = '2'
+		UNION 
+		SELECT dojangPost_subject, idx FROM dojangpost d JOIN comment c ON dojangPost_no = idx 
+			WHERE c.member_id = (select member_id from profile p where profile_no = '20') AND c.comment_status = '공개' AND c.class_no = '5'
+		UNION 
+		SELECT restaurant_name, idx FROM restaurant r JOIN comment c ON restaurant_no = idx 
+			WHERE member_id = (select member_id from profile p where profile_no = '20') AND c.comment_status = '공개' AND c.class_no = '8' LIMIT 3
+	</select>
+	
+	
+	
+	
+	
+</mapper>
