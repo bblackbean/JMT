@@ -7,7 +7,7 @@
 * __사용 기술__  
   * Java  
   * Spring Framework   
-  * HTML/CSS/JavaScript  
+  * HTML/CSS3/JavaScript  
   * jQuery  
   * MyBatis  
   * RESTful API  
@@ -23,7 +23,8 @@
 * __개선사항__  
   * 등급 아이콘 변경 시스템의 부재  
   * ajax를 이용하지 않은 검색과 페이징을 이용하여 메인 페이지의 검색창을 다른 방식으로 처리 필요  
-  * 회원 활동 내역에 따른 뱃지 부여 시스템 필요
+  * 회원 활동 내역에 따른 뱃지 부여 시스템 필요  
+  * 조금 더 넓은 지역의 공공 API, 사진 API 사용 필요
 * __참여자__  
 __김윤선__ https://github.com/kimyoonsun1008  
 __김아연__ https://github.com/kimayeon12  
